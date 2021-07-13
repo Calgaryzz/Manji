@@ -1,16 +1,7 @@
-# This is a sample Python script.
+from graphviz import dot
+from graphviz import Digraph
+from importer import construct_from_tfst
 
-# Press Maj+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+construct_from_tfst("/home/calgaryzz/workspace/Unitex-GramLab/Unitex/French/Corpus/80jours_snt/text.tfst", 3)
 
-
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
-
-
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+#Graphviz
