@@ -18,14 +18,23 @@ def construct_from_tfst(tfst,line):
                 a = automaton(stream[i+1], None)
                 pointer = i
                 break
-
+        act_state = -3
         while stream[pointer] != "t\n":
             pointer = pointer+1
+            act_state = act_state + 1
 
         pointer = pointer - 1
+        act_state = act_state -1
+
+        map = {}
         while re.search(r'^:', stream[pointer]) is not None:
-            for j in stream[pointer]:
-                print(j) #Travail à faire ici
+            match = re.findall(r' ([0-9]*) ([0-9]*)', stream[pointer])
+            for j in range(len(match)):
+                if act_state not in map.keys():
+                    map[act_state] = [node(match[j][0],match[j][1],act_state)]
+                else:
+                    map[act_state].append(node(match[j][0],match[j][1],act_state))
             pointer = pointer - 1
-
-
+            act_state = act_state - 1
+            for n in map.items():
+                print(n[1][0].next_state)
