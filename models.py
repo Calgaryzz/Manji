@@ -1,17 +1,16 @@
+from dataclasses import dataclass
+
+
+@dataclass
 class node:
-    label = None
-    next_state = None
-    state = None
+    label: str
+    state: int
+    next_state: str
 
     def __init__(self, label, next_state, state):
-        node.label = label
-        node.next_state = next_state
-        node.state = state
+        self.label = label
+        self.state = state
+        self.next_state = next_state
 
     def to_string(self):
-        return 'label: ' + node.label + ', next state: ' + node.next_state
-
-class automaton:
-    def __init__(self, sentence, values):
-        automaton.sentence = sentence
-        automaton.values = values
+        print("label: " + self.label + " ,state: ", self.state, " ,next state :" + self.next_state)
