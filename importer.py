@@ -1,4 +1,4 @@
-from models import node
+from models import node, automaton
 import re
 
 
@@ -15,7 +15,7 @@ def construct_from_tfst(tfst, sentence):
         for i in range(length):
             if stream[i] == "$" + str(sentence) + '\n':
                 print("Construction of the automaton for the sentence :", stream[i + 1])
-                #a = automaton(stream[i + 1], None)
+                a = automaton(stream[i + 1], {})
                 pointer = i
                 break
         act_state = -4
@@ -36,6 +36,4 @@ def construct_from_tfst(tfst, sentence):
                     map[act_state] = [node(i[0],i[1],act_state)]
             act_state = act_state -1
             pointer = pointer - 1
-        for k in map.keys():
-            for t in map[k]:
-                print(t.to_string())
+        a.map = map

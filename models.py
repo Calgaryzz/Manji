@@ -14,3 +14,14 @@ class node:
 
     def to_string(self):
         print("label: " + self.label + " ,state: ", self.state, " ,next state :" + self.next_state)
+
+
+@dataclass
+class automaton:
+    sentence: str
+    map: dict
+
+    def __init__(self, sentence, map):
+        self.sentence = sentence
+        self.map = map
+
