@@ -1,9 +1,12 @@
 import graphviz
+import networkx as nx
+import matplotlib.pyplot as plt
 
 from data_creation.automaton import transition
 import re
 
 def construct_from_tfst(tfst, sentence_n, visual=False):
+    lattice = nx.DiGraph()
     file = open(tfst, "r")
     stream = file.readlines()
     n_sentences = int(stream[0])
@@ -38,19 +41,25 @@ def construct_from_tfst(tfst, sentence_n, visual=False):
             match = re.findall(r' ([0-9]*) ([0-9]*)', stream[pointer])
             for i in match:
                 map[str(act_state)].append(transition(i[0],map[i[1]],act_state))
+                lattice.add_node(map[str(act_state)][len(map[str(act_state)]) - 1].label)
                 if visual:
                     dot.node(map[str(act_state)][len(map[str(act_state)])-1].label)
-                    for n in map[str(act_state)][len(map[str(act_state)])-1].to_state:
+                for n in map[str(act_state)][len(map[str(act_state)])-1].to_state:
+                    if visual:
                         dot.edge(map[str(act_state)][len(map[str(act_state)])-1].label, n.label)
+                    lattice.add_edge(map[str(act_state)][len(map[str(act_state)])-1].label, n.label)
             act_state = act_state -1
             pointer = pointer - 1
         first_transition = transition('0',map['0'],0)
-        if visual:
-            for n in first_transition.to_state:
+
+        for n in first_transition.to_state:
+            if visual:
                 dot.node(n.label)
                 dot.edge(first_transition.label, n.label)
-            dot.render('output/'+str(sentence_n), view=True)
-        return first_transition
+                dot.render('output/' + str(sentence_n), view=True)
+            lattice.add_node(n.label)
+            lattice.add_edge(first_transition.label, n.label)
+        return lattice
 
 def construct_corpus(tfst):
     """Create a corpus with all the sentences of the .tfst and chose the path randomly"""

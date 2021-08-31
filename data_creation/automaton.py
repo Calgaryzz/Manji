@@ -12,4 +12,4 @@ class transition:
         self.to_state = to_state
 
     def to_string(self):
-        print("label: " + self.label + " ,state: ", self.from_state, " ,next state :" + self.to_state)
+        print("label: " + self.label)
