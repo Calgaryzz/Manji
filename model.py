@@ -1,103 +1,144 @@
+# import resources
 import torch
 import torch.nn as nn
-import torch.optim as optim
 import torch.nn.functional as F
-from torch.utils.data import DataLoader
-import torchvision.datasets as datasets
-import torchvision.transforms as transforms
+import torch.optim as optim
+import matplotlib.pyplot as plt
+import numpy as np
 
 
-"""
-On définit le modèle
-input_size: Number of time steps (lattice size)
-num_classes: nombre valeurs que peux prendre une sortie (nous ça sera bon chemin ou mauvais chemin)
+# Todo: change to our data type (seq like true,false,true,true,false....)
+training_data = [
+    ("The cat ate the cheese".lower().split(), ["FALSE", "TRUE", "TRUE", "FALSE", "TRUE"]),
+    ("She read cheese book".lower().split(), ["TRUE", "TRUE", "FALSE", "TRUE"]),
+    ("The dog loves art".lower().split(), ["FALSE", "TRUE", "TRUE", "TRUE"]),
+    ("The elephant answers cheese phone".lower().split(), ["FALSE", "TRUE", "TRUE", "FALSE", "TRUE"])
+]
 
-model = NN(784,10)
-x = torch.randn(64,784)
-print(model(x).shape)
+# create a dictionary that maps transitions to indices
+tran2idx = {}
 
-"""
-class RNN(nn.Module):
-    def __init__(self,input_size, hidden_size, num_layers, num_classes):
-        super(RNN, self).__init__()
-        self.hidden_size = hidden_size
-        self.num_layers = num_layers
-        self.rnn = nn.RNN(input_size, hidden_size, num_layers, batch_first=True)
-        self.fc = nn.Linear(hidden_size*sequence_length, num_classes)
+for sent, tags in training_data:
+    for tran in sent:
+        if tran not in tran2idx:
+            tran2idx[tran] = len(tran2idx)
 
-    def forward(self, x):
-        pass
+# Values
+tag2idx = {"FALSE": 0, "TRUE": 1}
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# Todo: Our sequential data to tensor
+def prepare_sequence(seq, dictionnary):
+    '''This function takes in a sequence of transition and returns a
+    corresponding Tensor of numerical values (indices for each transition).'''
 
-#Hyperparameters
-input_size = 28
-sequence_length = 28
-num_layers = 2
-hidden_size = 2
-num_classes = 10
-learning_rate = 0.001
-batch_size = 64
-num_epochs = 2
+    idxs = [dictionnary[w] for w in seq]
+    idxs = np.array(idxs)
 
-train_dataset = datasets.MNIST(root='dataset/', train=True, transform=transforms.ToTensor(),download=True)
-train_loader = DataLoader(dataset=train_dataset,batch_size=batch_size,shuffle=True)
-test_dataset = datasets.MNIST(root='dataset/', train=False, transform=transforms.ToTensor(),download=True)
-test_loader = DataLoader(dataset=test_dataset,batch_size=batch_size,shuffle=True)
+    return torch.from_numpy(idxs)
 
-#Initialize NN
-model = NN(input_size,num_classes).to(device)
 
-#Loss and optimizer
-criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(),lr=learning_rate)
+class LSTMTagger(nn.Module):
 
-#Train NN
-"""
-1 epochs = The dataset have seen 1 time all the images
-data : images
-targets : label
-"""
-for epoch in range(num_epochs):
-    for batch_idx,(data, targets) in enumerate(train_loader):
-        # Get data to Cuda
-        data = data.to(device)
-        targets = targets.to(device)
+    def __init__(self, embedding_dim, hidden_dim, vocab_size, output_size):
+        ''' Initialize the layers of this model.'''
+        super(LSTMTagger, self).__init__()
 
-        # reshape in a single dimension
-        data = data.reshape(data.shape[0], -1)
+        self.hidden_dim = hidden_dim
+        self.word_embeddings = nn.Embedding(vocab_size, embedding_dim)
+        self.lstm = nn.LSTM(embedding_dim, hidden_dim)
+        self.hidden2tag = nn.Linear(hidden_dim, output_size)
+        self.hidden = self.init_hidden()
 
-        #forward
-        scores = model(data)
-        loss = criterion(scores, targets)
+    def init_hidden(self):
+        ''' At the start of training, we need to initialize a hidden state;
+           there will be none because the hidden state is formed based on perviously seen data.
+           So, this function defines a hidden state with all zeroes and of a specified size.'''
+        # The axes dimensions are (n_layers, batch_size, hidden_dim)
+        return (torch.zeros(1, 1, self.hidden_dim),
+                torch.zeros(1, 1, self.hidden_dim))
 
-        #backward
-        optimizer.zero_grad()
+    #Todo : adapt forward pass to lattice
+    def forward(self, sentence):
+        # create embedded word vectors for each word in a sentence
+        embeds = self.word_embeddings(sentence)
+
+        # get the output and hidden state by passing the lstm over our word embeddings
+        # the lstm takes in our embeddings and hiddent state
+        lstm_out, self.hidden = self.lstm(
+            embeds.view(len(sentence), 1, -1), self.hidden)
+
+        # get the scores for the most likely tag for a word
+        tag_outputs = self.hidden2tag(lstm_out.view(len(sentence), -1))
+        tag_scores = F.log_softmax(tag_outputs, dim=1)
+
+        return tag_scores
+
+# the embedding dimension defines the size of our word vectors
+# for our simple vocabulary and training set, we will keep these small
+EMBEDDING_DIM = 6
+HIDDEN_DIM = 6
+
+# instantiate our model
+model = LSTMTagger(EMBEDDING_DIM, HIDDEN_DIM, len(tran2idx), len(tag2idx))
+
+# define our loss and optimizer
+loss_function = nn.NLLLoss()
+optimizer = optim.SGD(model.parameters(), lr=0.1)
+
+test_sentence = "The cheese loves the elephant".lower().split()
+
+# see what the scores are before training
+# element [i,j] of the output is the *score* for tag j for word i.
+# to check the initial accuracy of our model, we don't need to train, so we use model.eval()
+inputs = prepare_sequence(test_sentence, tran2idx)
+inputs = inputs
+tag_scores = model(inputs)
+print(tag_scores)
+
+_, predicted_tags = torch.max(tag_scores, 1)
+print('\n')
+print('Predicted tags: \n',predicted_tags)
+
+n_epochs = 300
+
+for epoch in range(n_epochs):
+
+    epoch_loss = 0.0
+
+    # get all sentences and corresponding tags in the training data
+    for sentence, tags in training_data:
+
+        model.zero_grad()
+        model.hidden = model.init_hidden()
+
+        # prepare the inputs for processing by out network,
+        # turn all sentences and targets into Tensors of numerical indices
+        sentence_in = prepare_sequence(sentence, tran2idx)
+        targets = prepare_sequence(tags, tag2idx)
+
+        # forward pass to get tag scores
+        tag_scores = model(sentence_in)
+
+        # compute the loss, and gradients
+        loss = loss_function(tag_scores, targets)
+        epoch_loss += loss.item()
         loss.backward()
 
-        #gradient descent
+        # update the model parameters with optimizer.step()
         optimizer.step()
 
-#Test accuracy
+    # print out avg loss per 20 epochs
+    if (epoch % 20 == 19):
+        print("Epoch: %d, loss: %1.5f" % (epoch + 1, epoch_loss / len(training_data)))
 
-def check_accuracy(loader, model):
-    num_correct = 0
-    num_samples = 0
-    model.eval()
+test_sentence = "The cheese loves the elephant".lower().split()
 
-    with torch.no_grad():
-        for x, y in loader:
-            x = x.to(device)
-            y = y.to(device)
-            x = x.reshape(x.shape[0], -1)
+# see what the scores are after training
+inputs = prepare_sequence(test_sentence, tran2idx)
+inputs = inputs
+tag_scores = model(inputs)
+print(tag_scores)
 
-            scores = model(x)
-            _, predictions = scores.max(1)
-            num_correct += (predictions == y).sum()
-            num_samples += predictions.size(0)
-
-        print(f'Got {num_correct} / {num_samples} with accuraccy {float(num_correct)/float(num_samples)*100:.2f}')
-
-        model.train()
-
-check_accuracy(test_loader,model)
+_, predicted_tags = torch.max(tag_scores, 1)
+print('\n')
+print('Predicted tags: \n',predicted_tags)
