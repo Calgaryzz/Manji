@@ -39,7 +39,9 @@ def construct_from_tfst(tfst, sentence_n, visual=False):
             map[str(i)] = []
         while re.search(r'^:', stream[pointer]) is not None:
             match = re.findall(r' ([0-9]*) ([0-9]*)', stream[pointer])
+            matchstd = re.findall(r'@\{*} ([0-9]*)', stream[pointer])
             for i in match:
+                print(i)
                 map[str(act_state)].append(transition(i[0],map[i[1]],act_state))
                 lattice.add_node(map[str(act_state)][len(map[str(act_state)]) - 1].label)
                 if visual:

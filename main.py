@@ -1,6 +1,6 @@
 from data_creation.utils import construct_corpus, construct_from_tfst
+import networkx as nx
 
-sentence_number = 326
-starting_node = construct_from_tfst("/home/calgaryzz/workspace/Unitex-GramLab/Unitex/French/Corpus/80jours_snt/text.tfst", sentence_number, visual=True)
-#construct_corpus("/home/calgaryzz/workspace/Unitex-GramLab/Unitex/French/Corpus/80jours_snt/text.tfst")
-#print(starting_node.to_state)
+sentence_number = 6
+lattice = construct_from_tfst("/home/calgaryzz/workspace/Unitex-GramLab/Unitex/French/Corpus/80jours_snt/text.tfst", sentence_number, visual=True)
+sorted = list(nx.topological_sort(lattice))

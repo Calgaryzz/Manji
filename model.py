@@ -5,6 +5,8 @@ import torch.nn.functional as F
 import torch.optim as optim
 import matplotlib.pyplot as plt
 import numpy as np
+from latticeLSTM import latticeLSTM
+from latticeLSTM import LayerNormSubLSTMCell
 
 
 # Todo: change to our data type (seq like true,false,true,true,false....)
@@ -25,6 +27,7 @@ for sent, tags in training_data:
 
 # Values
 tag2idx = {"FALSE": 0, "TRUE": 1}
+print(tran2idx)
 
 # Todo: Our sequential data to tensor
 def prepare_sequence(seq, dictionnary):
@@ -39,14 +42,24 @@ def prepare_sequence(seq, dictionnary):
 
 class LSTMTagger(nn.Module):
 
-    def __init__(self, embedding_dim, hidden_dim, vocab_size, output_size):
+    def __init__(self, embedding_dim, hidden_dim, vocab_size, tagset_size):
         ''' Initialize the layers of this model.'''
         super(LSTMTagger, self).__init__()
 
         self.hidden_dim = hidden_dim
-        self.word_embeddings = nn.Embedding(vocab_size, embedding_dim)
-        self.lstm = nn.LSTM(embedding_dim, hidden_dim)
-        self.hidden2tag = nn.Linear(hidden_dim, output_size)
+
+        # embedding layer that turns words into a vector of a specified size
+        self.lattice_embeddings = nn.Embedding(vocab_size, embedding_dim)
+
+        # the LSTM takes embedded lattice vectors (of a specified size) as inputs
+        # and outputs hidden states of size hidden_dim
+        self.lstm = LayerNormSubLSTMCell(embedding_dim, hidden_dim)
+
+        # the linear layer that maps the hidden state output dimension
+        # to the number of tags we want as output, tagset_size (in this case this is 2 tags)
+        self.hidden2tag = nn.Linear(hidden_dim, tagset_size)
+
+        # initialize the hidden state (see code below)
         self.hidden = self.init_hidden()
 
     def init_hidden(self):
@@ -57,13 +70,13 @@ class LSTMTagger(nn.Module):
         return (torch.zeros(1, 1, self.hidden_dim),
                 torch.zeros(1, 1, self.hidden_dim))
 
-    #Todo : adapt forward pass to lattice
     def forward(self, sentence):
+        ''' Define the feedforward behavior of the model.'''
         # create embedded word vectors for each word in a sentence
         embeds = self.word_embeddings(sentence)
 
         # get the output and hidden state by passing the lstm over our word embeddings
-        # the lstm takes in our embeddings and hiddent state
+        # the lstm takes in our embeddings and hidden state
         lstm_out, self.hidden = self.lstm(
             embeds.view(len(sentence), 1, -1), self.hidden)
 
@@ -86,18 +99,6 @@ loss_function = nn.NLLLoss()
 optimizer = optim.SGD(model.parameters(), lr=0.1)
 
 test_sentence = "The cheese loves the elephant".lower().split()
-
-# see what the scores are before training
-# element [i,j] of the output is the *score* for tag j for word i.
-# to check the initial accuracy of our model, we don't need to train, so we use model.eval()
-inputs = prepare_sequence(test_sentence, tran2idx)
-inputs = inputs
-tag_scores = model(inputs)
-print(tag_scores)
-
-_, predicted_tags = torch.max(tag_scores, 1)
-print('\n')
-print('Predicted tags: \n',predicted_tags)
 
 n_epochs = 300
 
