@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 from data_creation.automaton import transition
 import re
 
+
+"""import a single lattice from text.tsft"""
 def construct_from_tfst(tfst, sentence_n, visual=False):
     lattice = nx.DiGraph()
     file = open(tfst, "r")
@@ -63,8 +65,12 @@ def construct_from_tfst(tfst, sentence_n, visual=False):
             lattice.add_edge(first_transition.label, n.label)
         return lattice
 
+
 def construct_corpus(tfst):
-    """Create a corpus with all the sentences of the .tfst and chose the path randomly"""
+    """
+    Create a corpus with all the sentences of the .tfst and chose the path randomly
+    todo: don't use construct_from_tsft, because it is reopening and reclosing stream everytime
+    """
 
     file = open(tfst, "r")
     stream = file.readlines()

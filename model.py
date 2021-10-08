@@ -102,6 +102,9 @@ test_sentence = "The cheese loves the elephant".lower().split()
 
 n_epochs = 300
 
+
+
+#Training
 for epoch in range(n_epochs):
 
     epoch_loss = 0.0

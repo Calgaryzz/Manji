@@ -9,6 +9,11 @@ from torch import Tensor
 
 GRNState = namedtuple('GRNState', ['hx', 'cx'])
 
+
+"""
+LatticeLSTMCell
+todo: adapt forward pass to lattice data
+"""
 class latticeLSTM(jit.ScriptModule):
     def __init__(self, input_size, hidden_size):
         super(latticeLSTM, self).__init__()
@@ -24,6 +29,8 @@ class latticeLSTM(jit.ScriptModule):
         hx, cx = state
         gates = (torch.matmul(input, self.weight_ih.t()) + self.bias_ih + torch.matmul(hx, self.weight_hh.t()) + self.bias_hh)
         ingate, forgetgate, cellgate, outgate = gates.chunk(4, 1)
+        #change to torch.mm
+        #gates.chunk(4,_) splits the tensor in 4
 
         ingate = torch.sigmoid(ingate)
         forgetgate = torch.sigmoid(forgetgate)
@@ -52,11 +59,8 @@ class LayerNormSubLSTMCell(jit.ScriptModule):
     def forward(self, input: Tensor, state: GRNState) -> Tuple[Tensor, GRNState]:
         hx, cx = state
         igates = self.layernorm_i(torch.matmul(input, self.weight_ih.t()))
-        print("guillllaume")
         hgates = self.layernorm_h(torch.matmul(hx, self.weight_hh.t()))
-        print("guillllaume")
         gates = (igates + hgates).sigmoid()
-        print("guillllaume")
         ingate, forgetgate, cellgate, outgate = gates.chunk(4, 1)
 
         cy = self.layernorm_c((forgetgate * cx) + (ingate - cellgate))
