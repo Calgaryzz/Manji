@@ -3,4 +3,5 @@ import networkx as nx
 
 sentence_number = 6
 lattice = construct_from_tfst("/home/calgaryzz/workspace/Unitex-GramLab/Unitex/French/Corpus/80jours_snt/text.tfst", sentence_number, visual=True)
-sorted = list(nx.topological_sort(lattice))
+
+sorted = list(nx.topological_sort(lattice))#The output lattice in topological order using networkx
